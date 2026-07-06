@@ -12,7 +12,7 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-MAX_PER_CALL = 500  # safety ceiling per request, well under Brevo's per-call limit
+MAX_PER_CALL = 500 
 
 
 def fill_template(text, recipient):
@@ -53,8 +53,7 @@ def send_batch():
                      f"You sent {len(recipients)}. Split into another batch."
         }), 400
 
-    # One messageVersion per recipient so each person gets their own
-    # rendered subject + body and only ever sees their own address in "to".
+
     message_versions = []
     for r in recipients:
         email = r.get("email")
