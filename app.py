@@ -3,7 +3,9 @@ import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
-import requests
+
+import brevo
+from brevo.core.api_error import ApiError
 
 
 load_dotenv()
@@ -11,8 +13,7 @@ load_dotenv()
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
-MAX_PER_CALL = 500 
+MAX_PER_CALL = 500  # safety ceiling per request, well under Brevo's per-call limit
 
 
 def fill_template(text, recipient):
@@ -53,49 +54,36 @@ def send_batch():
                      f"You sent {len(recipients)}. Split into another batch."
         }), 400
 
-
     message_versions = []
     for r in recipients:
         email = r.get("email")
         firstname = r.get("firstname")
-        to_entry = {"email": email}
-        if firstname:
-            to_entry["name"] = firstname
-        message_versions.append({
-            "to": [to_entry],
-            "subject": fill_template(subject, r),
-            "htmlContent": fill_template(html_body, r),
-        })
+        message_versions.append(
+            brevo.SendTransacEmailRequestMessageVersionsItem(
+                to=[brevo.SendTransacEmailRequestMessageVersionsItemToItem(email=email, name=firstname or None)],
+                subject=fill_template(subject, r),
+                html_content=fill_template(html_body, r),
+            )
+        )
 
-    body = {
-        "sender": {"name": sender_name or sender_email, "email": sender_email},
-        "subject": subject,
-        "htmlContent": html_body,
-        "messageVersions": message_versions,
-    }
+    client = brevo.Brevo(api_key=api_key)
 
     try:
-        resp = requests.post(
-            BREVO_API_URL,
-            headers={
-                "accept": "application/json",
-                "content-type": "application/json",
-                "api-key": api_key,
-            },
-            json=body,
-            timeout=30,
+        result = client.transactional_emails.send_transac_email(
+            sender=brevo.SendTransacEmailRequestSender(name=sender_name or sender_email, email=sender_email),
+            subject=subject,
+            html_content=html_body,
+            message_versions=message_versions,
         )
-        data = resp.json()
+    except ApiError as e:
+        return jsonify({"error": "Brevo API error", "details": e.body}), e.status_code or 502
     except Exception as e:
         return jsonify({"error": "Request to Brevo failed", "details": str(e)}), 500
-
-    if not resp.ok:
-        return jsonify({"error": "Brevo API error", "details": data}), resp.status_code
 
     return jsonify({
         "success": True,
         "sent": len(recipients),
-        "messageIds": data.get("messageIds", data),
+        "messageIds": getattr(result, "message_ids", None) or getattr(result, "message_id", None),
     }), 200
 
 
