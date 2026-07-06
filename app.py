@@ -2,7 +2,11 @@ import os
 import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from dotenv import load_dotenv
 import requests
+
+
+load_dotenv()
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
@@ -66,8 +70,6 @@ def send_batch():
 
     body = {
         "sender": {"name": sender_name or sender_email, "email": sender_email},
-        # Top-level subject/htmlContent act as fallback defaults; every
-        # version above overrides them anyway.
         "subject": subject,
         "htmlContent": html_body,
         "messageVersions": message_versions,
