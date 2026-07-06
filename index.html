@@ -484,7 +484,7 @@ bob@example.com, Bob"></textarea>
     sendBtnLabel.textContent = "Sending…";
 
     try {
-      const res = await fetch("/.netlify/functions/send-batch", {
+      const res = await fetch("/send-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ senderName, senderEmail, subject, htmlBody, recipients }),
