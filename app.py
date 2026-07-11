@@ -69,12 +69,19 @@ def send_batch():
     client = brevo.Brevo(api_key=api_key)
 
     try:
-        result = client.transactional_emails.send_transac_email(
-            sender=brevo.SendTransacEmailRequestSender(name=sender_name or sender_email, email=sender_email),
-            subject=subject,
-            html_content=html_body,
-            message_versions=message_versions,
-        )
+        send_kwargs = dict(
+        sender=brevo.SendTransacEmailRequestSender(name=sender_name or sender_email, email=sender_email),
+        subject=subject,
+        html_content=html_body,
+        message_versions=message_versions,
+    )
+    if attachment_payload:
+        send_kwargs["attachment"] = [
+            {"name": attachment_payload["name"], "content": attachment_payload["content"]}
+        ]
+
+    try:
+        result = client.transactional_emails.send_transac_email(**send_kwargs)
     except ApiError as e:
         return jsonify({"error": "Brevo API error", "details": e.body}), e.status_code or 502
     except Exception as e:
