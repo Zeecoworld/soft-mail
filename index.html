@@ -369,6 +369,11 @@ bob@example.com, Bob"></textarea>
 <p>Your message here...</p>"></textarea>
           <div class="hint">HTML is allowed. Use <code>{{firstname}}</code> anywhere and it's swapped per recipient.</div>
         </div>
+        <div class="field" style="margin-top:14px;">
+          <label class="field-label" for="attachment">Attachment (optional)</label>
+          <input type="file" id="attachment" />
+          <div class="hint">Max 4MB. Sent to every recipient in the batch.</div>
+        </div>
       </div>
 
       <div class="send-row">
@@ -463,12 +468,33 @@ bob@example.com, Bob"></textarea>
     el.addEventListener("input", updatePreview);
   });
 
+  function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+ }
+
   sendBtn.addEventListener("click", async () => {
     const senderName = senderNameEl.value.trim();
     const senderEmail = senderEmailEl.value.trim();
     const subject = subjectEl.value.trim();
     const htmlBody = htmlBodyEl.value;
     const recipients = updateCount();
+
+    const attachmentInput = document.getElementById("attachment");
+    let attachment = null;
+    if (attachmentInput.files.length > 0) {
+      const file = attachmentInput.files[0];
+      if (file.size > 4 * 1024 * 1024) {
+        statusEl.classList.add("show", "err");
+        statusEl.textContent = "Attachment must be under 4MB.";
+        return;
+      }
+      attachment = { name: file.name, content: await fileToBase64(file) };
+    }
 
     statusEl.className = "status";
     statusEl.textContent = "";
@@ -487,7 +513,7 @@ bob@example.com, Bob"></textarea>
       const res = await fetch("/send-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ senderName, senderEmail, subject, htmlBody, recipients }),
+        body: JSON.stringify({ senderName, senderEmail, subject, htmlBody, recipients, attachment }),
       });
       const data = await res.json();
 
