@@ -75,7 +75,7 @@ def send_batch():
         html_content=html_body,
         message_versions=message_versions,
     )
-       if attachment_payload:
+    if attachment_payload:
           send_kwargs["attachment"] = [
             {"name": attachment_payload["name"], "content": attachment_payload["content"]}
           ]
