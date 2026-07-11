@@ -44,6 +44,7 @@ def send_batch():
     subject = payload.get("subject")
     html_body = payload.get("htmlBody")
     recipients = payload.get("recipients")
+    attachment_payload = payload.get("attachment")
 
     if not sender_email or not subject or not html_body or not isinstance(recipients, list) or len(recipients) == 0:
         return jsonify({"error": "Missing senderEmail, subject, htmlBody, or recipients."}), 400
