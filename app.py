@@ -80,9 +80,21 @@ def send_batch():
             {"name": attachment_payload["name"], "content": attachment_payload["content"]}
         ]
 
-    try:
+   try:
         result = client.transactional_emails.send_transac_email(**send_kwargs)
-    except ApiError as e:
+   except ApiError as e:
         return jsonify({"error": "Brevo API error", "details": e.body}), e.status_code or 502
-    except Exception as e:
+   except Exception as e:
         return jsonify({"error": "Request to Brevo failed", "details": str(e)}), 500
+
+    message_ids = None
+   try:
+        message_ids = getattr(result, "message_ids", None) or getattr(result, "message_id", None)
+   except Exception:
+        pass
+
+   return jsonify({
+        "success": True,
+        "sent": len(recipients),
+        "messageIds": message_ids,
+    }), 200
