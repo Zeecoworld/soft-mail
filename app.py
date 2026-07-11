@@ -3,17 +3,14 @@ import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
-
 import brevo
 from brevo.core.api_error import ApiError
 
-
 load_dotenv()
-
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
-MAX_PER_CALL = 500  # safety ceiling per request, well under Brevo's per-call limit
+MAX_PER_CALL = 500
 
 
 def fill_template(text, recipient):
@@ -80,21 +77,26 @@ def send_batch():
             {"name": attachment_payload["name"], "content": attachment_payload["content"]}
         ]
 
-   try:
+    try:
         result = client.transactional_emails.send_transac_email(**send_kwargs)
-   except ApiError as e:
+    except ApiError as e:
         return jsonify({"error": "Brevo API error", "details": e.body}), e.status_code or 502
-   except Exception as e:
+    except Exception as e:
         return jsonify({"error": "Request to Brevo failed", "details": str(e)}), 500
 
+
     message_ids = None
-   try:
+    try:
         message_ids = getattr(result, "message_ids", None) or getattr(result, "message_id", None)
-   except Exception:
+    except Exception:
         pass
 
-   return jsonify({
+    return jsonify({
         "success": True,
         "sent": len(recipients),
         "messageIds": message_ids,
     }), 200
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
