@@ -365,9 +365,12 @@ bob@example.com, Bob"></textarea>
       <div class="section">
         <div class="eyebrow">Message</div>
         <div class="field">
-          <textarea id="htmlBody" placeholder="<p>Hi {{firstname}},</p>
-<p>Your message here...</p>"></textarea>
-          <div class="hint">HTML is allowed. Use <code>{{firstname}}</code> anywhere and it's swapped per recipient.</div>
+          <textarea id="htmlBody" placeholder="Hi {{firstname}},
+
+Your message here...
+
+Type normally with blank lines between paragraphs — or paste real HTML like <p>...</p> if you prefer."></textarea>
+          <div class="hint">Plain text works too now: blank lines become new paragraphs, single line breaks become <code>&lt;br&gt;</code>. If you paste actual HTML tags, they're kept as-is. Use <code>{{firstname}}</code> anywhere and it's swapped per recipient.</div>
         </div>
         <div class="field" style="margin-top:14px;">
           <label class="field-label" for="attachment">Attachment (optional)</label>
@@ -449,6 +452,31 @@ bob@example.com, Bob"></textarea>
     return (str || "").replace(/\{\{\s*firstname\s*\}\}/gi, name || "there");
   }
 
+  // --- NEW: normalize plain-text message bodies into real HTML ---
+  // Without this, a plain-text message (no <p>/<br> tags) collapses into one
+  // run-on block in HTML rendering, since raw "\n" is ignored by HTML.
+  function looksLikeHTML(str) {
+    // True if the text already contains real HTML tags (e.g. <p>, <br>, <div>, <a href=...>)
+    return /<\/?[a-z][^>]*>/i.test(str || "");
+  }
+
+  function escapeHTML(str) {
+    return (str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function normalizeBody(raw) {
+    if (!raw) return "";
+    if (looksLikeHTML(raw)) return raw; // already real HTML — leave untouched
+    // Plain text: blank line = new paragraph, single newline = line break
+    return raw
+      .split(/\n{2,}/)
+      .map((para) => `<p>${escapeHTML(para).replace(/\n/g, "<br>")}</p>`)
+      .join("\n");
+  }
+
   function updatePreview() {
     const list = updateCount();
     const first = list[0];
@@ -461,7 +489,8 @@ bob@example.com, Bob"></textarea>
     const subject = fillTemplate(subjectEl.value.trim(), sampleName);
     previewSubject.textContent = subject || "Your subject line appears here";
 
-    previewBody.innerHTML = fillTemplate(htmlBodyEl.value, sampleName);
+    const normalized = normalizeBody(htmlBodyEl.value);
+    previewBody.innerHTML = fillTemplate(normalized, sampleName);
   }
 
   [recipientsEl, senderNameEl, senderEmailEl, subjectEl, htmlBodyEl].forEach((el) => {
@@ -481,7 +510,7 @@ bob@example.com, Bob"></textarea>
     const senderName = senderNameEl.value.trim();
     const senderEmail = senderEmailEl.value.trim();
     const subject = subjectEl.value.trim();
-    const htmlBody = htmlBodyEl.value;
+    const htmlBody = normalizeBody(htmlBodyEl.value); // send the normalized version, not raw
     const recipients = updateCount();
 
     const attachmentInput = document.getElementById("attachment");
